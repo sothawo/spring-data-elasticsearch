@@ -88,6 +88,19 @@
 
 	<dependencies>
 
+		<!-- Kotlin extension -->
+		<dependency>
+			<groupId>org.jetbrains.kotlin</groupId>
+			<artifactId>kotlin-stdlib</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jetbrains.kotlin</groupId>
+			<artifactId>kotlin-reflect</artifactId>
+			<optional>true</optional>
+		</dependency>
+
 		<!-- Spring -->
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -247,6 +260,12 @@
 			<scope>test</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>io.mockk</groupId>
+			<artifactId>mockk</artifactId>
+			<version>${mockk}</version>
+			<scope>test</scope>
+		</dependency>
 
 		<!--
 		  we don't use lombok in Spring Data Elasticsearch anymore. But the dependency is set in the parent project, and so the
