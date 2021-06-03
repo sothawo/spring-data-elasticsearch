@@ -15,32 +15,34 @@ class CriteriaDSLTest {
         val firstName = "James"
         val lastName = "Bond"
 
-        val criteria = criteria {
-            must {
+        val criteriaDSL = criteria {
+            and {
                 +"must-first-name" isEqualTo firstName
                 +"must-last-name" isEqualTo lastName
                 +Criteria("must-ugly-call").`is`("ugly")
             }
-            should {
+            or {
                 +Person::firstName isEqualTo firstName
                 +Person::lastName isEqualTo lastName
                 +Criteria("oopsie").`is`("oopsie")
             }
         }
 
-        println(CriteriaQueryProcessor().createQuery(criteria).toString())
+        val criteria = criteriaDSL.build()
+        println(CriteriaQueryProcessor().createQuery(criteria))
     }
 
     @Test
     fun `Rodeck or Meisch`() {
 
-        val criteria = criteria {
-            should {
+
+        val criteriaDSL = criteria {
+            or {
                 +criteria {
-                    must {
+                    and {
                         +Person::lastName isEqualTo "Rodeck"
                         +criteria {
-                            should {
+                            or {
                                 +Person::firstName isEqualTo "Alaya"
                                 +Person::firstName isEqualTo "Salome"
                             }
@@ -48,10 +50,10 @@ class CriteriaDSLTest {
                     }
                 }
                 +criteria {
-                    must {
+                    and {
                         +Person::lastName isEqualTo "Meisch"
                         +criteria {
-                            should {
+                            or {
                                 +Person::firstName isEqualTo "P.J."
                                 +Person::firstName isEqualTo "Annabelle"
                             }
@@ -61,7 +63,8 @@ class CriteriaDSLTest {
             }
         }
 
-        println(CriteriaQueryProcessor().createQuery(criteria).toString())
+        val criteria = criteriaDSL.build()
+        println(CriteriaQueryProcessor().createQuery(criteria))
     }
 }
 
