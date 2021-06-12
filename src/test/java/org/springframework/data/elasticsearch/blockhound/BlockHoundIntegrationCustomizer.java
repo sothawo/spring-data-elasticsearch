@@ -33,6 +33,8 @@ public class BlockHoundIntegrationCustomizer implements BlockHoundIntegration {
 		builder.allowBlockingCallsInside(XContentBuilder.class.getName(), "<clinit>")
 				.allowBlockingCallsInside(Build.class.getName(), "<clinit>");
 
+		builder.allowBlockingCallsInside("org.testcontainers.utility.ResourceReaper.FilterRegistry", "register");
+
 		builder.blockingMethodCallback(it -> {
 			throw new BlockingOperationError(it);
 		});

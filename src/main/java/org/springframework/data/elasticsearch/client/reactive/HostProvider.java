@@ -85,7 +85,7 @@ public interface HostProvider<T extends HostProvider<T>> {
 	 *         found.
 	 */
 	default Mono<WebClient> getActive() {
-		return getActive(Verification.LAZY);
+		return getWebClient();
 	}
 
 	/**
@@ -96,6 +96,27 @@ public interface HostProvider<T extends HostProvider<T>> {
 	 *         found.
 	 */
 	default Mono<WebClient> getActive(Verification verification) {
+		return getWebClient(verification);
+	}
+
+	/**
+	 * Get the {@link WebClient} connecting to an active host utilizing cached {@link ElasticsearchHost}.
+	 *
+	 * @return the {@link Mono} emitting the client for an active host or {@link Mono#error(Throwable) an error} if none
+	 *         found.
+	 */
+	default Mono<WebClient> getWebClient() {
+		return getWebClient(Verification.LAZY);
+	}
+
+	/**
+	 * Get the {@link WebClient} connecting to an active host.
+	 *
+	 * @param verification must not be {@literal null}.
+	 * @return the {@link Mono} emitting the client for an active host or {@link Mono#error(Throwable) an error} if none
+	 *         found.
+	 */
+	default Mono<WebClient> getWebClient(Verification verification) {
 		return lookupActiveHost(verification).map(this::createWebClient);
 	}
 

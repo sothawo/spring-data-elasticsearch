@@ -17,14 +17,12 @@ package org.springframework.data.elasticsearch.clients.reactive.elasticsearch;
 
 import co.elastic.clients.elasticsearch._global.SearchRequest;
 import co.elastic.clients.elasticsearch._global.SearchResponse;
-import org.springframework.lang.Nullable;
 import reactor.core.publisher.Mono;
-
-import java.io.IOException;
 
 import org.elasticsearch.client.RequestOptions;
 import org.springframework.data.elasticsearch.clients.reactive.base.ReactiveApiClient;
 import org.springframework.data.elasticsearch.clients.reactive.base.ReactiveTransport;
+import org.springframework.lang.Nullable;
 
 /**
  * Reactive version of {@link co.elastic.clients.elasticsearch.ElasticsearchClient}.
@@ -47,10 +45,9 @@ public class ReactiveElasticsearchClient extends ReactiveApiClient<ReactiveElast
 		return new ReactiveElasticsearchClient(transport, options);
 	}
 
-	public <TDocument> Mono<SearchResponse<TDocument>> search(SearchRequest request, Class<TDocument> tDocumentClass)
-			throws IOException {
-		return this.transport.performRequest(request,
-				SearchRequest.createSearchEndpoint(this.getDeserializer(tDocumentClass)), this.requestOptions);
+	public <T> Mono<SearchResponse<T>> search(SearchRequest request, Class<T> tDocumentClass) {
+		return transport.performRequest(request, SearchRequest.createSearchEndpoint(this.getDeserializer(tDocumentClass)),
+				this.requestOptions).next();
 	}
 
 }

@@ -15,24 +15,34 @@
  */
 package org.springframework.data.elasticsearch.clients.reactive.base;
 
+import static org.springframework.data.elasticsearch.support.ExceptionUtils.*;
+import static org.springframework.web.reactive.function.client.WebClient.*;
+
 import co.elastic.clients.base.Endpoint;
 import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.JsonpValueParser;
 import co.elastic.clients.json.ToJsonp;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.Map;
 
 import org.elasticsearch.client.RequestOptions;
+import org.springframework.data.elasticsearch.client.ClientLogger;
+import org.springframework.data.elasticsearch.client.reactive.HostProvider;
+import org.springframework.data.util.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.BodyExtractors;
+import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.WebClient;
 
 /**
@@ -41,58 +51,117 @@ import org.springframework.web.reactive.function.client.WebClient;
  */
 public class WebClientTransport implements ReactiveTransport {
 
-	private final WebClient webClient;
+	private final HostProvider<?> hostProvider;
 	private final JsonpMapper mapper;
 
-	public WebClientTransport(WebClient webClient, JsonpMapper mapper) {
-		this.webClient = webClient;
-		this.mapper = mapper;
-	}
+	public WebClientTransport(HostProvider<?> hostProvider) {
 
-	@Override
-	public <RequestT, ResponseT, ErrorT> Mono<ResponseT> performRequest(RequestT request,
-			Endpoint<RequestT, ResponseT, ErrorT> endpoint, @Nullable RequestOptions options) {
-		String path = endpoint.requestUrl(request);
+		Assert.notNull(hostProvider, "hostProvider must not be null");
 
-		Map<String, String> params = endpoint.queryParameters(request);
-		Map<String, String> headers = endpoint.headers(request);
-
-		WebClient.RequestBodySpec requestBodySpec = webClient.method(HttpMethod.valueOf(endpoint.method(request)))
-				.uri(builder -> {
-					builder = builder.path(endpoint.requestUrl(request));
-					return builder.build();
-				});
-
-		if (endpoint.hasRequestBody()) {
-			try {
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				JsonGenerator generator = this.mapper.jsonpProvider().createGenerator(baos);
-				((ToJsonp) request).toJsonp(generator, this.mapper);
-				generator.close();
-				// TODO: use non-blocking call
-				String data = baos.toString("UTF-8");
-				requestBodySpec.contentType(MediaType.APPLICATION_JSON).body(Mono.just(data), String.class);
-			} catch (UnsupportedEncodingException e) {
-				return Mono.error(e);
-			}
-		}
-
-		Mono<ResponseT> responseTMono = requestBodySpec.exchangeToMono(clientResponse -> clientResponse
-				.body(BodyExtractors.toMono(byte[].class)).map(ByteArrayInputStream::new).flatMap(bais -> {
-					ResponseT response = null;
-					JsonpValueParser<ResponseT> responseParser = endpoint.responseParser();
-					if (responseParser != null) {
-						JsonParser parser = mapper.jsonpProvider().createParser(bais);
-						response = responseParser.parse(parser, mapper);
-					}
-					return Mono.justOrEmpty(response);
-				}));
-
-		return responseTMono;
+		this.hostProvider = hostProvider;
+		this.mapper = new JacksonJsonpMapper();
 	}
 
 	@Override
 	public JsonpMapper jsonpMapper() {
 		return mapper;
 	}
+
+	@Override
+	public <REQ, RESP, ERROR> Flux<RESP> performRequest(REQ request, Endpoint<REQ, RESP, ERROR> endpoint,
+			@Nullable RequestOptions options) {
+
+		Assert.notNull(request, "request must not be null");
+		Assert.notNull(endpoint, "endpoint must not be null");
+
+		String logId = ClientLogger.newLogId();
+
+		return Flux.from(execute(
+				webClient -> requestBodySpec(webClient, logId, request, endpoint, options).exchangeToMono(clientResponse -> {
+					// todo complete response parsing
+					return clientResponse.body(BodyExtractors.toMono(byte[].class)).map(ByteArrayInputStream::new)
+							.flatMap(bais -> {
+								RESP response = null;
+								JsonpValueParser<RESP> responseParser = endpoint.responseParser();
+								if (responseParser != null) {
+									JsonParser parser = mapper.jsonpProvider().createParser(bais);
+									response = responseParser.parse(parser, mapper);
+								}
+								return Mono.justOrEmpty(response);
+							});
+				})));
+	}
+
+	private <REQ, RESP, ERROR> RequestBodySpec requestBodySpec(WebClient webClient, String logId, REQ request,
+			Endpoint<REQ, RESP, ERROR> endpoint, @Nullable RequestOptions options) {
+
+		String method = endpoint.method(request);
+		String requestUrl = endpoint.requestUrl(request);
+		Map<String, String> queryParameters = endpoint.queryParameters(request);
+
+		RequestBodySpec requestBodySpec = webClient.method(HttpMethod.valueOf(method)) //
+				.uri(builder -> {
+					builder = builder.path(requestUrl);
+					// todo request parameters
+					return builder.build();
+				}) //
+				.attribute(ClientRequest.LOG_ID_ATTRIBUTE, logId);
+
+		// todo headers
+
+		if (endpoint.hasRequestBody()) {
+			Lazy<String> body = bodyExtractor((ToJsonp) request);
+			ClientLogger.logRequest(logId, method, requestUrl, queryParameters, body::get);
+			requestBodySpec.contentType(MediaType.APPLICATION_JSON).body(Mono.fromSupplier(body), String.class);
+		} else {
+			ClientLogger.logRequest(logId, method, requestUrl, queryParameters);
+		}
+
+		return requestBodySpec;
+	}
+
+	private Lazy<String> bodyExtractor(ToJsonp request) {
+
+		return Lazy.of(() -> {
+			Writer writer = new StringWriter();
+			JsonGenerator generator = mapper.jsonpProvider().createGenerator(writer);
+			request.toJsonp(generator, mapper);
+			generator.close();
+			return writer.toString();
+		});
+	}
+
+	/**
+	 * Calls the given callback with a {@link WebClient} communicating with a configured Elasticsearch host. If the call
+	 * fails with an exception that has a {@link java.net.ConnectException} as cause, the callback is retried with another
+	 * host, if one is available
+	 *
+	 * @param callback the callback to execute
+	 * @param <T> the type emitted by the returned Mono.
+	 * @return the {@link Mono} emitting the result type once subscribed.
+	 */
+	public <T> Mono<T> execute(ReactiveElasticsearchClientCallback<T> callback) {
+
+		return hostProvider.getWebClient() //
+				.flatMap(callback::doWithClient) //
+				.onErrorResume(throwable -> {
+
+					if (isCausedByConnectionException(throwable)) {
+						return hostProvider.getActive(HostProvider.Verification.ACTIVE) //
+								.flatMap(callback::doWithClient);
+					}
+
+					return Mono.error(throwable);
+				});
+	}
+
+	/**
+	 * Low level callback interface operating upon {@link WebClient} to send commands towards elasticsearch.
+	 *
+	 * @param <T> the type emitted by the returned Mono.
+	 */
+	interface ReactiveElasticsearchClientCallback<T> {
+		Mono<T> doWithClient(WebClient client);
+	}
+
 }

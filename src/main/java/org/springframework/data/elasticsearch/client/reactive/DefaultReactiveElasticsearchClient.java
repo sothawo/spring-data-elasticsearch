@@ -15,32 +15,19 @@
  */
 package org.springframework.data.elasticsearch.client.reactive;
 
-import io.netty.channel.ChannelOption;
-import io.netty.handler.ssl.ApplicationProtocolConfig;
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.IdentityCipherSuiteFilter;
-import io.netty.handler.ssl.JdkSslContext;
-import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.handler.timeout.WriteTimeoutHandler;
+import static org.springframework.data.elasticsearch.support.ExceptionUtils.*;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.netty.http.client.HttpClient;
-import reactor.netty.transport.ProxyProvider;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import javax.net.ssl.SSLContext;
 
 import org.apache.http.util.EntityUtils;
 import org.elasticsearch.ElasticsearchException;
@@ -116,7 +103,6 @@ import org.springframework.data.util.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
@@ -224,8 +210,7 @@ public class DefaultReactiveElasticsearchClient implements ReactiveElasticsearch
 		Assert.notNull(clientConfiguration, "ClientConfiguration must not be null");
 		Assert.notNull(requestCreator, "RequestCreator must not be null");
 
-		WebClientProvider provider = getWebClientProvider(clientConfiguration);
-
+		WebClientProvider provider = WebClientProvider.getWebClientProvider(clientConfiguration);
 		HostProvider<?> hostProvider = HostProvider.provider(provider, clientConfiguration.getHeadersSupplier(),
 				clientConfiguration.getEndpoints().toArray(new InetSocketAddress[0]));
 
@@ -234,71 +219,6 @@ public class DefaultReactiveElasticsearchClient implements ReactiveElasticsearch
 		client.setHeadersSupplier(clientConfiguration.getHeadersSupplier());
 
 		return client;
-	}
-
-	private static WebClientProvider getWebClientProvider(ClientConfiguration clientConfiguration) {
-
-		Duration connectTimeout = clientConfiguration.getConnectTimeout();
-		Duration soTimeout = clientConfiguration.getSocketTimeout();
-
-		HttpClient httpClient = HttpClient.create().compress(true);
-
-		if (!connectTimeout.isNegative()) {
-			httpClient = httpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.toIntExact(connectTimeout.toMillis()));
-		}
-
-		if (!soTimeout.isNegative()) {
-			httpClient = httpClient.doOnConnected(connection -> connection //
-					.addHandlerLast(new ReadTimeoutHandler(soTimeout.toMillis(), TimeUnit.MILLISECONDS))
-					.addHandlerLast(new WriteTimeoutHandler(soTimeout.toMillis(), TimeUnit.MILLISECONDS)));
-		}
-
-		if (clientConfiguration.getProxy().isPresent()) {
-			String proxy = clientConfiguration.getProxy().get();
-			String[] hostPort = proxy.split(":");
-
-			if (hostPort.length != 2) {
-				throw new IllegalArgumentException("invalid proxy configuration " + proxy + ", should be \"host:port\"");
-			}
-			httpClient = httpClient.proxy(proxyOptions -> proxyOptions.type(ProxyProvider.Proxy.HTTP).host(hostPort[0])
-					.port(Integer.parseInt(hostPort[1])));
-		}
-
-		String scheme = "http";
-
-		if (clientConfiguration.useSsl()) {
-
-			Optional<SSLContext> sslContext = clientConfiguration.getSslContext();
-
-			if (sslContext.isPresent()) {
-				httpClient = httpClient
-						.secure(sslContextSpec -> sslContextSpec.sslContext(new JdkSslContext(sslContext.get(), true, null,
-								IdentityCipherSuiteFilter.INSTANCE, ApplicationProtocolConfig.DISABLED, ClientAuth.NONE, null, false)));
-			} else {
-				httpClient = httpClient.secure();
-			}
-
-			scheme = "https";
-		}
-
-		WebClientProvider provider = WebClientProvider.create(scheme, new ReactorClientHttpConnector(httpClient));
-
-		if (clientConfiguration.getPathPrefix() != null) {
-			provider = provider.withPathPrefix(clientConfiguration.getPathPrefix());
-		}
-
-		provider = provider //
-				.withDefaultHeaders(clientConfiguration.getDefaultHeaders()) //
-				.withWebClientConfigurer(clientConfiguration.getWebClientConfigurer()) //
-				.withRequestConfigurer(requestHeadersSpec -> requestHeadersSpec.headers(httpHeaders -> {
-					HttpHeaders suppliedHeaders = clientConfiguration.getHeadersSupplier().get();
-
-					if (suppliedHeaders != null && suppliedHeaders != HttpHeaders.EMPTY) {
-						httpHeaders.addAll(suppliedHeaders);
-					}
-				}));
-
-		return provider;
 	}
 
 	public void setHeadersSupplier(Supplier<HttpHeaders> headersSupplier) {
@@ -508,27 +428,6 @@ public class DefaultReactiveElasticsearchClient implements ReactiveElasticsearch
 
 					return Mono.error(throwable);
 				});
-	}
-
-	/**
-	 * checks if the given throwable is a {@link ConnectException} or has one in it's cause chain
-	 *
-	 * @param throwable the throwable to check
-	 * @return true if throwable is caused by a {@link ConnectException}
-	 */
-	private boolean isCausedByConnectionException(Throwable throwable) {
-
-		Throwable t = throwable;
-		do {
-
-			if (t instanceof ConnectException) {
-				return true;
-			}
-
-			t = t.getCause();
-		} while (t != null);
-
-		return false;
 	}
 
 	@Override
