@@ -31,6 +31,7 @@ import reactor.core.publisher.Mono;
 import java.io.ByteArrayInputStream;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.Collections;
 import java.util.Map;
 
 import org.elasticsearch.client.RequestOptions;
@@ -41,13 +42,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.WebClient;
 
 /**
  * @author Peter-Josef Meisch
- * @since 4.3
+ * @since ES_CLIENT_8
  */
 public class WebClientTransport implements ReactiveTransport {
 
@@ -97,24 +100,32 @@ public class WebClientTransport implements ReactiveTransport {
 
 		String method = endpoint.method(request);
 		String requestUrl = endpoint.requestUrl(request);
-		Map<String, String> queryParameters = endpoint.queryParameters(request);
+
+		MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
+		Map<String, String> optionParameters = options != null ? options.getParameters() : Collections.emptyMap();
+		optionParameters.forEach(queryParams::add);
+		endpoint.queryParameters(request).forEach(optionParameters::put);
 
 		RequestBodySpec requestBodySpec = webClient.method(HttpMethod.valueOf(method)) //
 				.uri(builder -> {
 					builder = builder.path(requestUrl);
-					// todo request parameters
+
+					if (!queryParams.isEmpty()) {
+						builder = builder.queryParams(queryParams);
+					}
+
 					return builder.build();
 				}) //
 				.attribute(ClientRequest.LOG_ID_ATTRIBUTE, logId);
 
-		// todo headers
+		// todo headers from options and request
 
 		if (endpoint.hasRequestBody()) {
 			Lazy<String> body = bodyExtractor((ToJsonp) request);
-			ClientLogger.logRequest(logId, method, requestUrl, queryParameters, body::get);
+			ClientLogger.logRequest(logId, method, requestUrl, optionParameters, body::get);
 			requestBodySpec.contentType(MediaType.APPLICATION_JSON).body(Mono.fromSupplier(body), String.class);
 		} else {
-			ClientLogger.logRequest(logId, method, requestUrl, queryParameters);
+			ClientLogger.logRequest(logId, method, requestUrl, optionParameters);
 		}
 
 		return requestBodySpec;

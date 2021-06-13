@@ -233,13 +233,14 @@ public interface WebClientProvider {
 		provider = provider //
 				.withDefaultHeaders(clientConfiguration.getDefaultHeaders()) //
 				.withWebClientConfigurer(clientConfiguration.getWebClientConfigurer()) //
-				.withRequestConfigurer(requestHeadersSpec -> requestHeadersSpec.headers(httpHeaders -> {
-					HttpHeaders suppliedHeaders = clientConfiguration.getHeadersSupplier().get();
+				.withRequestConfigurer(requestHeadersSpec -> requestHeadersSpec //
+						.headers(httpHeaders -> {
+							HttpHeaders suppliedHeaders = clientConfiguration.getHeadersSupplier().get();
 
-					if (suppliedHeaders != null && suppliedHeaders != HttpHeaders.EMPTY) {
-						httpHeaders.addAll(suppliedHeaders);
-					}
-				}));
+							if (suppliedHeaders != null && suppliedHeaders != HttpHeaders.EMPTY) {
+								httpHeaders.addAll(suppliedHeaders);
+							}
+						}));
 
 		return provider;
 	}

@@ -74,6 +74,22 @@ public final class RestClients {
 
 		Assert.notNull(clientConfiguration, "ClientConfiguration must not be null!");
 
+		RestClientBuilder builder = getRestClientBuilder(clientConfiguration);
+		RestHighLevelClient client = new RestHighLevelClient(builder);
+		return () -> client;
+	}
+
+	/**
+	 * Creats a low level {@link RestClient} for the given configuration.
+	 *
+	 * @param clientConfiguration must not be {@lioteral null}
+	 * @return the {@link RestClient}
+	 */
+	public static RestClient getRestClient(ClientConfiguration clientConfiguration) {
+		return getRestClientBuilder(clientConfiguration).build();
+	}
+
+	private static RestClientBuilder getRestClientBuilder(ClientConfiguration clientConfiguration) {
 		HttpHost[] httpHosts = formattedHosts(clientConfiguration.getEndpoints(), clientConfiguration.useSsl()).stream()
 				.map(HttpHost::create).toArray(HttpHost[]::new);
 		RestClientBuilder builder = RestClient.builder(httpHosts);
@@ -123,9 +139,7 @@ public final class RestClients {
 
 			return clientBuilder;
 		});
-
-		RestHighLevelClient client = new RestHighLevelClient(builder);
-		return () -> client;
+		return builder;
 	}
 
 	private static Header[] toHeaderArray(HttpHeaders headers) {
@@ -213,7 +227,7 @@ public final class RestClients {
 
 	/**
 	 * Interceptor to inject custom supplied headers.
-	 * 
+	 *
 	 * @since 4.0
 	 */
 	private static class CustomHeaderInjector implements HttpRequestInterceptor {

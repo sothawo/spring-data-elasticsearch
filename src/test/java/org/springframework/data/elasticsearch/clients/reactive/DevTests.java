@@ -17,12 +17,16 @@ package org.springframework.data.elasticsearch.clients.reactive;
 
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._global.SearchRequest;
 import co.elastic.clients.elasticsearch._global.SearchResponse;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
+import org.elasticsearch.client.RequestOptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
 import org.springframework.data.elasticsearch.clients.reactive.elasticsearch.ReactiveElasticsearchClient;
@@ -34,16 +38,31 @@ import org.springframework.http.HttpHeaders;
  */
 public class DevTests {
 
-	@Test
-	void someTestsForTheNewReactiveClient() {
+	private final RequestOptions requestOptions = RequestOptions.DEFAULT.toBuilder()
+			.addHeader("X-SpringDataElasticsearch-AlwaysThere", "true").addParameter("pretty", "true").build();
+	private final ReactiveElasticsearchClient reactiveElasticsearchClient = ElasticsearchClients
+			.createReactive(clientConfiguration(), requestOptions);
+	private final ElasticsearchClient imperativeElasticsearchClient = ElasticsearchClients
+			.createImperative(clientConfiguration(), requestOptions);
 
-		ReactiveElasticsearchClient client = ReactiveElasticsearchClients.create(clientConfiguration());
+	@Test
+	void search() throws IOException {
 
 		SearchRequest searchRequest = new SearchRequest.Builder().index("appdata-index").build();
 
-		SearchResponse<EntityAsMap> searchResponse = client.search(searchRequest, EntityAsMap.class).block();
-
+		SearchResponse<EntityAsMap> searchResponse = searchImperative(searchRequest);
 		assertThat(searchResponse).isNotNull();
+
+		searchResponse = searchReactive(searchRequest);
+		assertThat(searchResponse).isNotNull();
+	}
+
+	private SearchResponse<EntityAsMap> searchImperative(SearchRequest searchRequest) throws IOException {
+		return imperativeElasticsearchClient.search(searchRequest, EntityAsMap.class);
+	}
+
+	private SearchResponse<EntityAsMap> searchReactive(SearchRequest searchRequest) {
+		return Objects.requireNonNull(reactiveElasticsearchClient.search(searchRequest, EntityAsMap.class).block());
 	}
 
 	private ClientConfiguration clientConfiguration() {
@@ -52,7 +71,8 @@ public class DevTests {
 				.withProxy("localhost:8080") //
 				.withHeaders(() -> {
 					HttpHeaders headers = new HttpHeaders();
-					headers.add("currentTime", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+					headers.add("X-SpringDataElasticsearch-timestamp",
+							LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 					return headers;
 				}) //
 				.build();
