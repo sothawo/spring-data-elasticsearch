@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.data.elasticsearch.clients.reactive;
+package org.springframework.data.elasticsearch.clients;
 
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 
@@ -29,6 +29,7 @@ import java.util.Objects;
 import org.elasticsearch.client.RequestOptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
+import org.springframework.data.elasticsearch.clients.reactive.ElasticsearchClients;
 import org.springframework.data.elasticsearch.clients.reactive.elasticsearch.ReactiveElasticsearchClient;
 import org.springframework.data.elasticsearch.support.DefaultStringObjectMap;
 import org.springframework.http.HttpHeaders;
@@ -50,11 +51,20 @@ public class DevTests {
 
 		SearchRequest searchRequest = new SearchRequest.Builder().index("appdata-index").build();
 
-		SearchResponse<EntityAsMap> searchResponse = searchImperative(searchRequest);
-		assertThat(searchResponse).isNotNull();
+		SearchResponse<EntityAsMap> searchResponse = null;
+		try {
+			searchResponse = searchImperative(searchRequest);
+			assertThat(searchResponse).isNotNull();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
-		searchResponse = searchReactive(searchRequest);
-		assertThat(searchResponse).isNotNull();
+		try {
+			searchResponse = searchReactive(searchRequest);
+			assertThat(searchResponse).isNotNull();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	private SearchResponse<EntityAsMap> searchImperative(SearchRequest searchRequest) throws IOException {

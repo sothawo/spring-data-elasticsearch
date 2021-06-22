@@ -11,7 +11,7 @@ import org.springframework.lang.Nullable;
  * Reactive version of {@link co.elastic.clients.base.Transport}.
  *
  * @author Peter-Josef Meisch
- * @since 4.3
+ * @since ES_CLIENT_8
  */
 public interface ReactiveTransport {
 	<REQ, RESP, ERROR> Flux<RESP> performRequest(REQ request, Endpoint<REQ, RESP, ERROR> endpoint,

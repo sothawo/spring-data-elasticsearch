@@ -113,12 +113,15 @@ public class WebClientTransport implements ReactiveTransport {
 					if (!queryParams.isEmpty()) {
 						builder = builder.queryParams(queryParams);
 					}
-
 					return builder.build();
 				}) //
 				.attribute(ClientRequest.LOG_ID_ATTRIBUTE, logId);
 
-		// todo headers from options and request
+		
+		if (options != null) {
+			options.getHeaders().forEach(header -> requestBodySpec.header(header.getName(), header.getValue()));
+		}
+		endpoint.headers(request).forEach(requestBodySpec::header);
 
 		if (endpoint.hasRequestBody()) {
 			Lazy<String> body = bodyExtractor((ToJsonp) request);
