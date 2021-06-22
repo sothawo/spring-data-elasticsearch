@@ -40,7 +40,7 @@ import org.springframework.http.HttpHeaders;
 public class DevTests {
 
 	private final RequestOptions requestOptions = RequestOptions.DEFAULT.toBuilder()
-			.addHeader("X-SpringDataElasticsearch-AlwaysThere", "true").addParameter("pretty", "true").build();
+			.addHeader("X-SpringDataElasticsearch-AlwaysThere", "true").addParameter("bretty", "true").build();
 	private final ReactiveElasticsearchClient reactiveElasticsearchClient = ElasticsearchClients
 			.createReactive(clientConfiguration(), requestOptions);
 	private final ElasticsearchClient imperativeElasticsearchClient = ElasticsearchClients

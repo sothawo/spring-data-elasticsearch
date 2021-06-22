@@ -18,6 +18,8 @@ package org.springframework.data.elasticsearch.clients.reactive.base;
 import static org.springframework.data.elasticsearch.support.ExceptionUtils.*;
 import static org.springframework.web.reactive.function.client.WebClient.*;
 
+import co.elastic.clients.base.BooleanResponse;
+import co.elastic.clients.base.ElasticsearchError;
 import co.elastic.clients.base.Endpoint;
 import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.JsonpValueParser;
@@ -37,6 +39,7 @@ import java.util.Map;
 import org.elasticsearch.client.RequestOptions;
 import org.springframework.data.elasticsearch.client.ClientLogger;
 import org.springframework.data.elasticsearch.client.reactive.HostProvider;
+import org.springframework.data.elasticsearch.clients.ElasticsearchErrorException;
 import org.springframework.data.util.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -79,20 +82,50 @@ public class WebClientTransport implements ReactiveTransport {
 
 		String logId = ClientLogger.newLogId();
 
-		return Flux.from(execute(
-				webClient -> requestBodySpec(webClient, logId, request, endpoint, options).exchangeToMono(clientResponse -> {
-					// todo complete response parsing
-					return clientResponse.body(BodyExtractors.toMono(byte[].class)).map(ByteArrayInputStream::new)
-							.flatMap(bais -> {
-								RESP response = null;
-								JsonpValueParser<RESP> responseParser = endpoint.responseParser();
-								if (responseParser != null) {
-									JsonParser parser = mapper.jsonpProvider().createParser(bais);
-									response = responseParser.parse(parser, mapper);
-								}
-								return Mono.justOrEmpty(response);
-							});
-				})));
+		return Flux.from(execute(webClient -> requestBodySpec(webClient, logId, request, endpoint, options)
+				.exchangeToMono(clientResponse -> getResponse(endpoint, clientResponse))));
+	}
+
+	private <REQ, RESP, ERROR> Mono<RESP> getResponse(Endpoint<REQ, RESP, ERROR> endpoint,
+			org.springframework.web.reactive.function.client.ClientResponse clientResponse) {
+
+		int statusCode = clientResponse.statusCode().value();
+
+		if (endpoint.isError(statusCode)) {
+			// todo, the ElasticsearchError parser currently cannot parse the nested error object of an error response and
+			// fails on parsing, so we create one with the unparsed error string
+			return clientResponse.body(BodyExtractors.toMono(byte[].class)) //
+					.flatMap(
+							buf -> Mono.error(new ElasticsearchErrorException(new ElasticsearchError(statusCode, new String(buf)))));
+
+			// return clientResponse.body(BodyExtractors.toMono(byte[].class)) //
+			// .map(buf -> new ByteArrayInputStream(buf)) //
+			// .flatMap(bais -> {
+			// ERROR response = null;
+			// JsonpValueParser<ERROR> responseParser = endpoint.errorParser(statusCode);
+			// if (responseParser != null) {
+			// JsonParser parser = mapper.jsonpProvider().createParser(bais);
+			// response = responseParser.parse(parser, mapper);
+			// }
+			// return Mono.error(new ApiException(response));
+			// });
+		} else if (endpoint instanceof Endpoint.Boolean) {
+			// noinspection unchecked
+			RESP response = (RESP) new BooleanResponse(((Endpoint.Boolean<?>) endpoint).getResult(statusCode));
+			return Mono.just(response);
+		} else {
+			return clientResponse.body(BodyExtractors.toMono(byte[].class)) //
+					.map(ByteArrayInputStream::new) //
+					.flatMap(bais -> {
+						RESP response = null;
+						JsonpValueParser<RESP> responseParser = endpoint.responseParser();
+						if (responseParser != null) {
+							JsonParser parser = mapper.jsonpProvider().createParser(bais);
+							response = responseParser.parse(parser, mapper);
+						}
+						return Mono.justOrEmpty(response);
+					});
+		}
 	}
 
 	private <REQ, RESP, ERROR> RequestBodySpec requestBodySpec(WebClient webClient, String logId, REQ request,
@@ -117,14 +150,13 @@ public class WebClientTransport implements ReactiveTransport {
 				}) //
 				.attribute(ClientRequest.LOG_ID_ATTRIBUTE, logId);
 
-		
 		if (options != null) {
 			options.getHeaders().forEach(header -> requestBodySpec.header(header.getName(), header.getValue()));
 		}
 		endpoint.headers(request).forEach(requestBodySpec::header);
 
 		if (endpoint.hasRequestBody()) {
-			Lazy<String> body = bodyExtractor((ToJsonp) request);
+			Lazy<String> body = requestBodyExtractor((ToJsonp) request);
 			ClientLogger.logRequest(logId, method, requestUrl, optionParameters, body::get);
 			requestBodySpec.contentType(MediaType.APPLICATION_JSON).body(Mono.fromSupplier(body), String.class);
 		} else {
@@ -134,7 +166,7 @@ public class WebClientTransport implements ReactiveTransport {
 		return requestBodySpec;
 	}
 
-	private Lazy<String> bodyExtractor(ToJsonp request) {
+	private Lazy<String> requestBodyExtractor(ToJsonp request) {
 
 		return Lazy.of(() -> {
 			Writer writer = new StringWriter();
