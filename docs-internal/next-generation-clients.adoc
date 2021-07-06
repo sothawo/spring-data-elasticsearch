@@ -5,19 +5,22 @@ Peter-Josef Meisch <pj.meisch@sothawo.com>
 
 Ideas and concepts to integrate the next generation clients.
 
+.NOTE
+This is a work in progress, so the documents, APIs and affected classes are subject to continous evolution and change
+
 == Why next generation clients
 
 Spring Data Elasticsearch needs to be changed in the near future to support new clients:
 
 * Elasticsearch is working on a new client that will be the successor of the `RestHighLevelClient` as the `RestHighLevelClient` uses libraries from the Elasticsearch core that are not licensed under the Apache 2 license anymore.
 * Opensearch is a fork based on Elasticsearch 7.10.2 and should be supported as well. We need a client that is based on the 7.10.2 libraries
-* it should be possible to use external client implementations that adhere to a to-be-defined API. This would for example allow Opensearch to implement their own implementation.
+* it should be possible to use external client implementations that adhere to a to-be-defined API. This would for example allow Opensearch to provide their own implementation.
 
 The currently supported clients, the `RestHighLevelClient` and the `TransportClient` should not be used anymore when the new Elasticsearch client is available due to potential licensing problems.
 
 This document describes the internal package structure and architectural changes to enable use of the new clients as well as to document the needed changes.
 
-For clarification check the <<Class diagram>> at the end of this document. It show the current and the planned state.
+For clarification check the <<Class diagram>> at the end of this document. It shows the current and the planned state.
 
 == Connectors
 
@@ -25,20 +28,18 @@ The basic concept for integrating the new clients is the use of a `Connector`. A
 
 Spring Data Elasticsearch methods will only interact with a `Connector` implementation. What implementation will be used will be part of the configuration, it might be even possible to use SPI to find an implementation.
 
-=== SearchConnector
+Currently in the concept:
 
+.SearchConnector
 A `SearchConnector` will be used to execute all search related tasks in the imperative context.
 
-=== IndexConnector
-
+.IndexConnector
 A `IndexConnector` provides the methods to manipulate indices in the imperative context.
 
-=== ReactiveSearchConnector
-
+.ReactiveSearchConnector
 A `ReactiveSearchConnector` will be used to execute all search related tasks in the reactive context.
 
-=== Reactive IndexConnector
-
+.Reactive IndexConnector
 A `Reactive IndexConnector` provides the methods to manipulate indices in the reactive context.
 
 
