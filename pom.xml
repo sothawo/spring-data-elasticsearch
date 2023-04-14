@@ -26,7 +26,7 @@
 		<elasticsearch-java>8.7.0</elasticsearch-java>
 
 		<log4j>2.18.0</log4j>
-		<netty>4.1.65.Final</netty>
+		<netty>4.1.90.Final</netty>
 
 		<blockhound-junit>1.0.7.RELEASE</blockhound-junit>
 		<hoverfly>0.14.3</hoverfly>
