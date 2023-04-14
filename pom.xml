@@ -29,7 +29,7 @@
 		<netty>4.1.65.Final</netty>
 
 		<blockhound-junit>1.0.7.RELEASE</blockhound-junit>
-		<hoverfly>0.14.3</hoverfly>
+		<hoverfly>0.14.4</hoverfly>
 		<jsonassert>1.5.1</jsonassert>
 		<testcontainers>1.17.3</testcontainers>
 		<wiremock>2.33.2</wiremock>
