@@ -31,7 +31,7 @@
 		<blockhound-junit>1.0.7.RELEASE</blockhound-junit>
 		<hoverfly>0.14.3</hoverfly>
 		<jsonassert>1.5.1</jsonassert>
-		<testcontainers>1.17.3</testcontainers>
+		<testcontainers>1.18.0</testcontainers>
 		<wiremock>2.33.2</wiremock>
 
 		<java-module-name>spring.data.elasticsearch</java-module-name>
