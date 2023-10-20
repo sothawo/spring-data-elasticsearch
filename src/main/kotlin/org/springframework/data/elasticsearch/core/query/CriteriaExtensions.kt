@@ -23,10 +23,6 @@ import kotlin.reflect.KProperty
  * @since 4.3
  */
 
-infix fun Criteria.isEqualTo(o: Any?): Criteria = `is`(o)
+infix fun Criteria.isEqualTo(o: Any?): Criteria = o?.let { `is`(it) } ?: this
 infix fun <T> KProperty<T>.isEqualTo(value: T) = Criteria(toDotPath()).isEqualTo(value)
 infix fun <T> String.isEqualTo(value: T) = Criteria(this).isEqualTo(value)
-
-
-
-

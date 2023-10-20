@@ -1,8 +1,12 @@
-package org.springframework.data.elasticsearch.core
+@file:Suppress("PackageDirectoryMismatch")
+
+package org.springframework.data.elasticsearch.client.elc
+// strange package but needed to access CriteriaQueryProcessor
 
 import org.junit.jupiter.api.Test
 import org.springframework.data.elasticsearch.core.query.Criteria
 import org.springframework.data.elasticsearch.core.query.isEqualTo
+import org.springframework.data.elasticsearch.core.criteria
 
 /**
  * @author Peter-Josef Meisch
@@ -29,7 +33,7 @@ class CriteriaDSLTest {
         }
 
         val criteria = criteriaDSL.build()
-        println(CriteriaQueryProcessor().createQuery(criteria))
+        println(CriteriaQueryProcessor.createQuery(criteria))
     }
 
     @Test
@@ -64,7 +68,7 @@ class CriteriaDSLTest {
         }
 
         val criteria = criteriaDSL.build()
-        println(CriteriaQueryProcessor().createQuery(criteria))
+        println(CriteriaQueryProcessor.createQuery(criteria))
     }
 }
 

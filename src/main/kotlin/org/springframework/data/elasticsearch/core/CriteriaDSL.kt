@@ -15,7 +15,6 @@
  */
 package org.springframework.data.elasticsearch.core
 
-import org.jetbrains.annotations.Debug
 import org.springframework.data.elasticsearch.core.query.Criteria
 import org.springframework.data.mapping.toDotPath
 import kotlin.reflect.KProperty
@@ -59,7 +58,7 @@ class CriteriaDSL {
         }
 
         must = if (mustSubCriteria.isNotEmpty()) {
-            if (must == null) {
+            if (null == must) {
                 mustSubCriteria.reduce { actual, next -> actual.subCriteria(next) }
             } else {
                 mustSubCriteria.fold(must) { actual, next -> actual.subCriteria(next) }
@@ -67,9 +66,9 @@ class CriteriaDSL {
         } else must
 
         return when {
-            (should == null && must == null) -> throw CriteriaDSLException("empty CriteriaDSL detected")
-            (should == null) -> must!!
-            (must == null) -> should
+            (null == should && null == must) -> throw CriteriaDSLException("empty CriteriaDSL detected")
+            (null == should) -> must!!
+            (null == must) -> should
             // append the should to the musts, CriteriaQueryProcessor expects that
             else -> should.criteriaChain.fold(must) { actual, next -> actual.or(next) }
         }
@@ -125,4 +124,3 @@ fun criteria(init: CriteriaDSL.() -> Unit): CriteriaDSL {
     return criteriaDSL
 
 }
-
