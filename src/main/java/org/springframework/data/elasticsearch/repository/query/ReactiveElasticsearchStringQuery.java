@@ -29,54 +29,14 @@ import org.springframework.util.Assert;
  * @author Haibo Liu
  * @since 3.2
  */
-public class ReactiveElasticsearchStringQuery extends AbstractReactiveElasticsearchRepositoryQuery {
+@Deprecated(since = "5.4", forRemoval = true)
+public class ReactiveElasticsearchStringQuery extends ReactiveRepositoryStringQuery {
 
-	private final String query;
-	private final QueryMethodEvaluationContextProvider evaluationContextProvider;
-
-	public ReactiveElasticsearchStringQuery(ReactiveElasticsearchQueryMethod queryMethod,
-			ReactiveElasticsearchOperations operations, QueryMethodEvaluationContextProvider evaluationContextProvider) {
-
-		this(queryMethod.getAnnotatedQuery(), queryMethod, operations, evaluationContextProvider);
-	}
-
-	public ReactiveElasticsearchStringQuery(String query, ReactiveElasticsearchQueryMethod queryMethod,
-			ReactiveElasticsearchOperations operations, QueryMethodEvaluationContextProvider evaluationContextProvider) {
+	public ReactiveElasticsearchStringQuery(ReactiveElasticsearchQueryMethod queryMethod, ReactiveElasticsearchOperations operations, QueryMethodEvaluationContextProvider evaluationContextProvider) {
 		super(queryMethod, operations, evaluationContextProvider);
-
-		Assert.notNull(query, "query must not be null");
-		Assert.notNull(evaluationContextProvider, "evaluationContextProvider must not be null");
-
-		this.query = query;
-		this.evaluationContextProvider = evaluationContextProvider;
 	}
 
-	@Override
-	protected BaseQuery createQuery(ElasticsearchParametersParameterAccessor parameterAccessor) {
-		ConversionService conversionService = getElasticsearchOperations().getElasticsearchConverter()
-				.getConversionService();
-		String processed = new QueryStringProcessor(query, queryMethod, conversionService, evaluationContextProvider)
-				.createQuery(parameterAccessor);
-		return new StringQuery(processed);
-	}
-
-	@Override
-	boolean isCountQuery() {
-		return queryMethod.hasCountQueryAnnotation();
-	}
-
-	@Override
-	boolean isDeleteQuery() {
-		return false;
-	}
-
-	@Override
-	boolean isExistsQuery() {
-		return false;
-	}
-
-	@Override
-	boolean isLimiting() {
-		return false;
+	public ReactiveElasticsearchStringQuery(String query, ReactiveElasticsearchQueryMethod queryMethod, ReactiveElasticsearchOperations operations, QueryMethodEvaluationContextProvider evaluationContextProvider) {
+		super(query, queryMethod, operations, evaluationContextProvider);
 	}
 }
