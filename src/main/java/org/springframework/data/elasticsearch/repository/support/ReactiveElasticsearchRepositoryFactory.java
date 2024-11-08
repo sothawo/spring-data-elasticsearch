@@ -23,8 +23,8 @@ import org.springframework.data.elasticsearch.core.ReactiveElasticsearchOperatio
 import org.springframework.data.elasticsearch.core.mapping.ElasticsearchPersistentEntity;
 import org.springframework.data.elasticsearch.core.mapping.ElasticsearchPersistentProperty;
 import org.springframework.data.elasticsearch.repository.query.ReactiveElasticsearchQueryMethod;
-import org.springframework.data.elasticsearch.repository.query.ReactiveElasticsearchStringQuery;
 import org.springframework.data.elasticsearch.repository.query.ReactivePartTreeElasticsearchQuery;
+import org.springframework.data.elasticsearch.repository.query.ReactiveRepositoryStringQuery;
 import org.springframework.data.elasticsearch.repository.support.querybyexample.ReactiveQueryByExampleElasticsearchExecutor;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.projection.ProjectionFactory;
@@ -161,10 +161,10 @@ public class ReactiveElasticsearchRepositoryFactory extends ReactiveRepositoryFa
 			if (namedQueries.hasQuery(namedQueryName)) {
 				String namedQuery = namedQueries.getQuery(namedQueryName);
 
-				return new ReactiveElasticsearchStringQuery(namedQuery, queryMethod, operations,
+				return new ReactiveRepositoryStringQuery(namedQuery, queryMethod, operations,
 						evaluationContextProvider);
 			} else if (queryMethod.hasAnnotatedQuery()) {
-				return new ReactiveElasticsearchStringQuery(queryMethod, operations, evaluationContextProvider);
+				return new ReactiveRepositoryStringQuery(queryMethod, operations, evaluationContextProvider);
 			} else {
 				return new ReactivePartTreeElasticsearchQuery(queryMethod, operations, evaluationContextProvider);
 			}
