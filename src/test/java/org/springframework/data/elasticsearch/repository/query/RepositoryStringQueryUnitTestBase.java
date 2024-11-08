@@ -29,13 +29,13 @@ import org.springframework.lang.Nullable;
 /**
  * @author Peter-Josef Meisch
  */
-public class ElasticsearchStringQueryUnitTestBase {
+public class RepositoryStringQueryUnitTestBase {
 
 	protected ElasticsearchConverter setupConverter() {
 		MappingElasticsearchConverter converter = new MappingElasticsearchConverter(
 				new SimpleElasticsearchMappingContext());
 		Collection<Converter<?, ?>> converters = new ArrayList<>();
-		converters.add(ElasticsearchStringQueryUnitTests.CarConverter.INSTANCE);
+		converters.add(RepositoryStringQueryUnitTests.CarConverter.INSTANCE);
 		CustomConversions customConversions = new ElasticsearchCustomConversions(converters);
 		converter.setConversions(customConversions);
 		converter.afterPropertiesSet();
@@ -69,7 +69,7 @@ public class ElasticsearchStringQueryUnitTestBase {
 		INSTANCE;
 
 		@Override
-		public String convert(ElasticsearchStringQueryUnitTests.Car car) {
+		public String convert(RepositoryStringQueryUnitTests.Car car) {
 			return (car.getName() != null ? car.getName() : "null") + '-'
 					+ (car.getModel() != null ? car.getModel() : "null");
 		}
