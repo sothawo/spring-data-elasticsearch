@@ -195,6 +195,8 @@ This property will not be written to the mapping, it will not be stored in Elast
 After an entity is persisted, for example with a call to `ElasticsearchOperations.save(T entity)`, the entity returned from that call will contain the name of the index that an entity was saved to in that property.
 This is useful when the index name is dynamically set by a bean, or when writing to a write alias.
 
+After a search operation, the property of the entity will contain the name of the index that the entity was retrieved from.
+
 Putting some value into such a property does not set the index into which an entity is stored!
 
 [[elasticsearch.mapping.meta-model.rules]]
