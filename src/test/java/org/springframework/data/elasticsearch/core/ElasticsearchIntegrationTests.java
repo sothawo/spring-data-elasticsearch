@@ -3739,6 +3739,22 @@ public abstract class ElasticsearchIntegrationTests {
 		assertThat(saved.getIndexedIndexName()).isEqualTo(indexNameProvider.indexName() + "-indexedindexname");
 	}
 
+	@Test // #3007
+	@DisplayName("should set IndexedIndexName in search result")
+	void shouldSetIndexedIndexNameInSearchResult() {
+
+		var entity = new IndexedIndexNameEntity();
+		entity.setId("42");
+		entity.setSomeText("someText");
+		operations.save(entity);
+
+		var searchHits = operations.search(Query.findAll(), IndexedIndexNameEntity.class);
+
+		assertThat(searchHits.getTotalHits()).isEqualTo(1);
+		var foundEntity = searchHits.getSearchHit(0).getContent();
+		assertThat(foundEntity.indexedIndexName).isEqualTo(indexNameProvider.indexName() + "-indexedindexname");
+	}
+	
 	@Test // #1945
 	@DisplayName("should error on sort with unmapped field and default settings")
 	void shouldErrorOnSortWithUnmappedFieldAndDefaultSettings() {

@@ -167,6 +167,24 @@ public abstract class ReactiveElasticsearchIntegrationTests {
 		assertThat(saved.getIndexedIndexName()).isEqualTo(indexNameProvider.indexName() + "-indexedindexname");
 	}
 
+	@Test // #3007
+	@DisplayName("should set IndexedIndexName in search result")
+	void shouldSetIndexedIndexNameInSearchResult() {
+
+		var entity = new IndexedIndexNameEntity();
+		entity.setId("42");
+		entity.setSomeText("someText");
+		operations.save(entity).block();
+
+		operations.search(Query.findAll(), IndexedIndexNameEntity.class)
+				.as(StepVerifier::create)
+				.consumeNextWith(searchHit -> {
+					assertThat(searchHit.getContent().indexedIndexName)
+							.isEqualTo(indexNameProvider.indexName() + "-indexedindexname");
+				})
+				.verifyComplete();
+	}
+
 	private Mono<Boolean> documentWithIdExistsInIndex(String id, String index) {
 		return operations.exists(id, IndexCoordinates.of(index));
 	}
