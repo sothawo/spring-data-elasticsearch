@@ -60,7 +60,7 @@ import org.springframework.lang.Nullable;
  * @author Haibo Liu
  */
 @ExtendWith(MockitoExtension.class)
-public class ReactiveRepositoryStringQueryUnitTests extends RepositoryStringQueryUnitTestBase {
+public class ReactiveRepositoryStringQueryUnitTests extends RepositoryStringQueryUnitTestsBase {
 
 	@Mock ReactiveElasticsearchOperations operations;
 

@@ -16,9 +16,7 @@
 package org.springframework.data.elasticsearch.repository.query;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -26,12 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.springframework.data.annotation.Id;
@@ -41,13 +35,10 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 import org.springframework.data.elasticsearch.annotations.InnerField;
 import org.springframework.data.elasticsearch.annotations.MultiField;
 import org.springframework.data.elasticsearch.annotations.Query;
-import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.StringQuery;
 import org.springframework.data.elasticsearch.repositories.custommethod.QueryParameter;
-import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.repository.Repository;
-import org.springframework.data.repository.core.support.DefaultRepositoryMetadata;
 import org.springframework.data.repository.query.QueryMethodEvaluationContextProvider;
 import org.springframework.lang.Nullable;
 
@@ -57,15 +48,7 @@ import org.springframework.lang.Nullable;
  * @author Niklas Herder
  * @author Haibo Liu
  */
-@ExtendWith(MockitoExtension.class)
-public class RepositoryStringQueryUnitTests extends RepositoryStringQueryUnitTestBase {
-
-	@Mock ElasticsearchOperations operations;
-
-	@BeforeEach
-	public void setUp() {
-		when(operations.getElasticsearchConverter()).thenReturn(setupConverter());
-	}
+public class RepositoryStringQueryUnitTests extends RepositoryStringQueryUnitTestsBase {
 
 	@Test // DATAES-552
 	public void shouldReplaceParametersCorrectly() throws Exception {
@@ -350,7 +333,8 @@ public class RepositoryStringQueryUnitTests extends RepositoryStringQueryUnitTes
 			throws NoSuchMethodException {
 
 		Class<?>[] argTypes = Arrays.stream(args).map(Object::getClass).toArray(Class[]::new);
-		ElasticsearchQueryMethod queryMethod = getQueryMethod(methodName, argTypes);
+		ElasticsearchQueryMethod queryMethod = getQueryMethod(RepositoryStringQueryUnitTests.SampleRepository.class,
+				methodName, argTypes);
 		RepositoryStringQuery elasticsearchStringQuery = queryForMethod(queryMethod);
 		return elasticsearchStringQuery.createQuery(new ElasticsearchParametersParameterAccessor(queryMethod, args));
 	}
@@ -373,13 +357,6 @@ public class RepositoryStringQueryUnitTests extends RepositoryStringQueryUnitTes
 	private RepositoryStringQuery queryForMethod(ElasticsearchQueryMethod queryMethod) {
 		return new RepositoryStringQuery(queryMethod, operations, queryMethod.getAnnotatedQuery(),
 				QueryMethodEvaluationContextProvider.DEFAULT);
-	}
-
-	private ElasticsearchQueryMethod getQueryMethod(String name, Class<?>... parameters) throws NoSuchMethodException {
-
-		Method method = SampleRepository.class.getMethod(name, parameters);
-		return new ElasticsearchQueryMethod(method, new DefaultRepositoryMetadata(SampleRepository.class),
-				new SpelAwareProxyProjectionFactory(), operations.getElasticsearchConverter().getMappingContext());
 	}
 
 	private interface SampleRepository extends Repository<Person, String> {

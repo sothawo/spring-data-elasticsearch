@@ -29,7 +29,7 @@ import org.springframework.lang.Nullable;
 /**
  * @author Peter-Josef Meisch
  */
-public class RepositoryStringQueryUnitTestBase {
+public class RepositoryStringQueryUnitTestsBase extends RepositoryQueryUnitTestsBase {
 
 	protected ElasticsearchConverter setupConverter() {
 		MappingElasticsearchConverter converter = new MappingElasticsearchConverter(
