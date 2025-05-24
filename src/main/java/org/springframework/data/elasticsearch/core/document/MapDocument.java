@@ -25,8 +25,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.data.elasticsearch.support.DefaultStringObjectMap;
 import org.springframework.data.mapping.MappingException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * {@link Document} implementation backed by a {@link LinkedHashMap}.
@@ -344,7 +344,7 @@ class MapDocument implements Document {
 	public String toJson() {
 		try {
 			return OBJECT_MAPPER.writeValueAsString(this);
-		} catch (JsonProcessingException e) {
+		} catch (JacksonException e) {
 			throw new MappingException("Cannot render document to JSON", e);
 		}
 	}
