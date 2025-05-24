@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.data.elasticsearch.core.convert.ConversionException;
 import org.springframework.data.elasticsearch.support.StringObjectMap;
 import org.springframework.util.Assert;
+import tools.jackson.core.JacksonException;
 
 /**
  * A representation of an Elasticsearch document as extended {@link StringObjectMap Map}. All iterators preserve
@@ -87,7 +88,7 @@ public interface Document extends StringObjectMap<Document> {
 		clear();
 		try {
 			putAll(MapDocument.OBJECT_MAPPER.readerFor(Map.class).readValue(json));
-		} catch (IOException e) {
+		} catch (JacksonException e) {
 			throw new ConversionException("Cannot parse JSON", e);
 		}
 		return this;

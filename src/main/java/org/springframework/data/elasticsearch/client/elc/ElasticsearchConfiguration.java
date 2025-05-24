@@ -22,6 +22,7 @@ import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.TransportOptions;
 import co.elastic.clients.transport.rest_client.RestClientOptions;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.springframework.context.annotation.Bean;
@@ -31,9 +32,9 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.convert.ElasticsearchConverter;
 import org.springframework.util.Assert;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+//import tools.jackson.annotation.JsonInclude;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
 
 /**
  * Base class for a @{@link org.springframework.context.annotation.Configuration} class to set up the Elasticsearch
@@ -125,10 +126,13 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 		// we need to create our own objectMapper that keeps null values in order to provide the storeNullValue
 		// functionality. The one Elasticsearch would provide removes the nulls. We remove unwanted nulls before they get
 		// into this mapper, so we can safely keep them here.
-		var objectMapper = (new ObjectMapper())
+		//todo 3113 : check what to do with Elasticsearch 8.18 which does not use jackson 3
+/*
+		var objectMapper = new ObjectMapper()
 				.configure(SerializationFeature.INDENT_OUTPUT, false)
 				.setSerializationInclusion(JsonInclude.Include.ALWAYS);
-		return new JacksonJsonpMapper(objectMapper);
+*/
+		return new JacksonJsonpMapper();
 	}
 
 	/**
