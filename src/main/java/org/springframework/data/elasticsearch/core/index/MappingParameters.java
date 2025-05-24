@@ -28,8 +28,8 @@ import org.springframework.data.elasticsearch.annotations.*;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.StringNode;
 
 /**
  * A class to hold the mapping parameters that might be set on
@@ -285,7 +285,7 @@ public final class MappingParameters {
 
 		if (copyTo != null && copyTo.length > 0) {
 			objectNode.putArray(FIELD_PARAM_COPY_TO)
-					.addAll(Arrays.stream(copyTo).map(TextNode::valueOf).collect(Collectors.toList()));
+					.addAll(Arrays.stream(copyTo).map(StringNode::valueOf).collect(Collectors.toList()));
 		}
 
 		if (ignoreAbove != null) {
