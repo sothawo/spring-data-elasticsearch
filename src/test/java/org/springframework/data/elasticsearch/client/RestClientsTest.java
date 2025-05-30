@@ -40,6 +40,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchClients;
 import org.springframework.data.elasticsearch.client.elc.ReactiveElasticsearchClient;
+import org.springframework.data.elasticsearch.client.elc.rest_client.RestClients;
 import org.springframework.data.elasticsearch.support.HttpHeaders;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -122,7 +123,7 @@ public class RestClientsTest {
 							return httpClientBuilder;
 						}));
 				configurationBuilder.withClientConfigurer(
-						ElasticsearchClients.ElasticsearchRestClientConfigurationCallback.from(restClientBuilder -> {
+						RestClients.ElasticsearchRestClientConfigurationCallback.from(restClientBuilder -> {
 							restClientConfigurerCount.incrementAndGet();
 							return restClientBuilder;
 						}));
@@ -133,7 +134,7 @@ public class RestClientsTest {
 							return webClient;
 						}));
 				configurationBuilder.withClientConfigurer(
-						ElasticsearchClients.ElasticsearchRestClientConfigurationCallback.from(restClientBuilder -> {
+						RestClients.ElasticsearchRestClientConfigurationCallback.from(restClientBuilder -> {
 							restClientConfigurerCount.incrementAndGet();
 							return restClientBuilder;
 						}));

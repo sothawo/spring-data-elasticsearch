@@ -20,13 +20,13 @@ import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.TransportOptions;
-import co.elastic.clients.transport.rest5_client.low_level.RequestOptions;
-import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
-import co.elastic.clients.transport.rest5_client.Rest5ClientOptions;
+import co.elastic.clients.transport.rest_client.RestClientOptions;
 
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
-import org.springframework.data.elasticsearch.client.elc.rest5_client.Rest5Clients;
+import org.springframework.data.elasticsearch.client.elc.rest_client.RestClients;
 import org.springframework.data.elasticsearch.config.ElasticsearchConfigurationSupport;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.convert.ElasticsearchConverter;
@@ -39,12 +39,16 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 /**
  * Base class for a @{@link org.springframework.context.annotation.Configuration} class to set up the Elasticsearch
  * connection using the Elasticsearch Client. This class exposes different parts of the setup as Spring beans. Deriving
- * classes must provide the {@link ClientConfiguration} to use.
+ * classes must provide the {@link ClientConfiguration} to use. <br/>
+ * This class uses the Elasticsearch RestClient which was replaced by the Rest5Client in Elasticsearch 9. It is still
+ * available here but deprecated.
  *
  * @author Peter-Josef Meisch
  * @since 4.4
+ * @deprecated since 6.0, use {@link ElasticsearchConfiguration}
  */
-public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurationSupport {
+@Deprecated(since = "6.0", forRemoval=true)
+public abstract class ElasticsearchLegacyRestClientConfiguration extends ElasticsearchConfigurationSupport {
 
 	/**
 	 * Must be implemented by deriving classes to provide the {@link ClientConfiguration}.
@@ -54,7 +58,6 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 	@Bean(name = "elasticsearchClientConfiguration")
 	public abstract ClientConfiguration clientConfiguration();
 
-
 	/**
 	 * Provides the underlying low level Elasticsearch RestClient.
 	 *
@@ -62,11 +65,11 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 	 * @return RestClient
 	 */
 	@Bean
-	public Rest5Client elasticsearchRest5Client(ClientConfiguration clientConfiguration) {
+	public RestClient elasticsearchRestClient(ClientConfiguration clientConfiguration) {
 
 		Assert.notNull(clientConfiguration, "clientConfiguration must not be null");
 
-		return Rest5Clients.getRest5Client(clientConfiguration);
+		return RestClients.getRestClient(clientConfiguration);
 	}
 
 	/**
@@ -77,12 +80,12 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 	 * @since 5.2
 	 */
 	@Bean
-	public ElasticsearchTransport elasticsearchTransport(Rest5Client rest5Client, JsonpMapper jsonpMapper) {
+	public ElasticsearchTransport elasticsearchTransport(RestClient restClient, JsonpMapper jsonpMapper) {
 
-		Assert.notNull(rest5Client, "restClient must not be null");
+		Assert.notNull(restClient, "restClient must not be null");
 		Assert.notNull(jsonpMapper, "jsonpMapper must not be null");
 
-		return ElasticsearchClients.getElasticsearchTransport(rest5Client, ElasticsearchClients.IMPERATIVE_CLIENT,
+		return ElasticsearchClients.getElasticsearchTransport(restClient, ElasticsearchClients.IMPERATIVE_CLIENT,
 				transportOptions(), jsonpMapper);
 	}
 
@@ -101,8 +104,7 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 	}
 
 	/**
-	 * Creates a {@link ElasticsearchOperations} implementation using an
-	 * {@link co.elastic.clients.elasticsearch.ElasticsearchClient}.
+	 * Creates a {@link ElasticsearchOperations} implementation using an {@link ElasticsearchClient}.
 	 *
 	 * @return never {@literal null}.
 	 */
@@ -117,7 +119,7 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 	}
 
 	/**
-	 * Provides the JsonpMapper bean that is used in the {@link #elasticsearchTransport(Rest5Client, JsonpMapper)} method.
+	 * Provides the JsonpMapper bean that is used in the {@link #elasticsearchTransport(RestClient, JsonpMapper)} method.
 	 *
 	 * @return the {@link JsonpMapper} to use
 	 * @since 5.2
@@ -137,6 +139,6 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 	 * @return the options that should be added to every request. Must not be {@literal null}
 	 */
 	public TransportOptions transportOptions() {
-		return new Rest5ClientOptions(RequestOptions.DEFAULT, false);
+		return new RestClientOptions(RequestOptions.DEFAULT, false);
 	}
 }
