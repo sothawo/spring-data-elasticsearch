@@ -93,7 +93,7 @@ public final class VersionInfo {
 	}
 
 	/**
-	 * @return a String usable as user agtne, containing the versions o Spring Data Elasticsearch and the Elasticsearch
+	 * @return a String usable as user agent, containing the versions of Spring Data Elasticsearch and the Elasticsearch
 	 *         library
 	 * @since 6.0
 	 */

@@ -15,6 +15,9 @@
  */
 package org.springframework.data.elasticsearch.client.elc;
 
+import static org.springframework.data.elasticsearch.client.elc.rest5_client.Rest5Clients.*;
+import static org.springframework.data.elasticsearch.client.elc.rest_client.RestClients.*;
+
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -23,35 +26,22 @@ import co.elastic.clients.transport.TransportOptions;
 import co.elastic.clients.transport.Version;
 import co.elastic.clients.transport.rest5_client.Rest5ClientOptions;
 import co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import co.elastic.clients.transport.rest5_client.low_level.RequestOptions;
 import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import co.elastic.clients.transport.rest_client.RestClientOptions;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 
-import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
-import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HttpContext;
-import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
-import org.springframework.data.elasticsearch.support.HttpHeaders;
 import org.springframework.util.Assert;
-
-import static org.springframework.data.elasticsearch.client.elc.rest5_client.Rest5Clients.*;
-import static org.springframework.data.elasticsearch.client.elc.rest_client.RestClients.*;
 
 /**
  * Utility class to create the different Elasticsearch clients. The RestClient class is the one used in Elasticsearch
@@ -160,17 +150,21 @@ public final class ElasticsearchClients {
 
 	// region imperative client
 	/**
-	 * Creates a new imperative {@link ElasticsearchClient}
+	 * Creates a new imperative {@link ElasticsearchClient}. This uses a RestClient, if the old RestClient is needed, this
+	 * must be created with the {@link org.springframework.data.elasticsearch.client.elc.rest_client.RestClients} class
+	 * and passed in as parameter.
 	 *
 	 * @param clientConfiguration configuration options, must not be {@literal null}.
 	 * @return the {@link ElasticsearchClient}
 	 */
 	public static ElasticsearchClient createImperative(ClientConfiguration clientConfiguration) {
-		return createImperative(getRestClient(clientConfiguration), null, DEFAULT_JSONP_MAPPER);
+		return createImperative(getRest5Client(clientConfiguration), null, DEFAULT_JSONP_MAPPER);
 	}
 
 	/**
-	 * Creates a new imperative {@link ElasticsearchClient}
+	 * Creates a new imperative {@link ElasticsearchClient}. This uses a RestClient, if the old RestClient is needed, this
+	 * must be created with the {@link org.springframework.data.elasticsearch.client.elc.rest_client.RestClients} class
+	 * and passed in as parameter.
 	 *
 	 * @param clientConfiguration configuration options, must not be {@literal null}.
 	 * @param transportOptions options to be added to each request.
@@ -178,7 +172,7 @@ public final class ElasticsearchClients {
 	 */
 	public static ElasticsearchClient createImperative(ClientConfiguration clientConfiguration,
 			TransportOptions transportOptions) {
-		return createImperative(getRestClient(clientConfiguration), transportOptions, DEFAULT_JSONP_MAPPER);
+		return createImperative(getRest5Client(clientConfiguration), transportOptions, DEFAULT_JSONP_MAPPER);
 	}
 
 	/**
@@ -186,9 +180,21 @@ public final class ElasticsearchClients {
 	 *
 	 * @param restClient the RestClient to use
 	 * @return the {@link ElasticsearchClient}
+	 * @deprecated since 6.0, use the version with a Rest5Client.
 	 */
+	@Deprecated(since = "6.0", forRemoval = true)
 	public static ElasticsearchClient createImperative(RestClient restClient) {
 		return createImperative(restClient, null, DEFAULT_JSONP_MAPPER);
+	}
+
+	/**
+	 * Creates a new imperative {@link ElasticsearchClient}
+	 *
+	 * @param rest5Client the Rest5Client to use
+	 * @return the {@link ElasticsearchClient}
+	 */
+	public static ElasticsearchClient createImperative(Rest5Client rest5Client) {
+		return createImperative(rest5Client, null, DEFAULT_JSONP_MAPPER);
 	}
 
 	/**
@@ -198,13 +204,36 @@ public final class ElasticsearchClients {
 	 * @param transportOptions options to be added to each request.
 	 * @param jsonpMapper the mapper for the transport to use
 	 * @return the {@link ElasticsearchClient}
+	 * @deprecated since 6.0, use the version with a Rest5Client.
 	 */
+	@Deprecated(since = "6.0", forRemoval = true)
 	public static ElasticsearchClient createImperative(RestClient restClient, @Nullable TransportOptions transportOptions,
 			JsonpMapper jsonpMapper) {
 
 		Assert.notNull(restClient, "restClient must not be null");
 
 		ElasticsearchTransport transport = getElasticsearchTransport(restClient, IMPERATIVE_CLIENT, transportOptions,
+				jsonpMapper);
+
+		return createImperative(transport);
+	}
+
+	/**
+	 * Creates a new imperative {@link ElasticsearchClient}
+	 *
+	 * @param rest5Client the Rest5Client to use
+	 * @param transportOptions options to be added to each request.
+	 * @param jsonpMapper the mapper for the transport to use
+	 * @return the {@link ElasticsearchClient}
+	 * @since 6.0
+	 */
+	public static ElasticsearchClient createImperative(Rest5Client rest5Client,
+			@Nullable TransportOptions transportOptions,
+			JsonpMapper jsonpMapper) {
+
+		Assert.notNull(rest5Client, "restClient must not be null");
+
+		ElasticsearchTransport transport = getElasticsearchTransport(rest5Client, IMPERATIVE_CLIENT, transportOptions,
 				jsonpMapper);
 
 		return createImperative(transport);
@@ -245,7 +274,7 @@ public final class ElasticsearchClients {
 		Assert.notNull(jsonpMapper, "jsonpMapper must not be null");
 
 		TransportOptions.Builder transportOptionsBuilder = transportOptions != null ? transportOptions.toBuilder()
-				: new RestClientOptions(RequestOptions.DEFAULT, false).toBuilder();
+				: new RestClientOptions(org.elasticsearch.client.RequestOptions.DEFAULT, false).toBuilder();
 
 		RestClientOptions.Builder restClientOptionsBuilder = getRestClientOptionsBuilder(transportOptions);
 
@@ -269,6 +298,7 @@ public final class ElasticsearchClients {
 
 		return new RestClientTransport(restClient, jsonpMapper, restClientOptionsBuilder.build());
 	}
+
 	/**
 	 * Creates an {@link ElasticsearchTransport} that will use the given client that additionally is customized with a
 	 * header to contain the clientType
@@ -280,32 +310,33 @@ public final class ElasticsearchClients {
 	 * @return ElasticsearchTransport
 	 */
 	public static ElasticsearchTransport getElasticsearchTransport(Rest5Client rest5Client, String clientType,
-																   @Nullable TransportOptions transportOptions, JsonpMapper jsonpMapper) {
+			@Nullable TransportOptions transportOptions, JsonpMapper jsonpMapper) {
 
 		Assert.notNull(rest5Client, "restClient must not be null");
 		Assert.notNull(clientType, "clientType must not be null");
 		Assert.notNull(jsonpMapper, "jsonpMapper must not be null");
 
 		TransportOptions.Builder transportOptionsBuilder = transportOptions != null ? transportOptions.toBuilder()
-				: new RestClientOptions(RequestOptions.DEFAULT, false).toBuilder();
+				: new Rest5ClientOptions(RequestOptions.DEFAULT, false).toBuilder();
 
 		Rest5ClientOptions.Builder rest5ClientOptionsBuilder = getRest5ClientOptionsBuilder(transportOptions);
 
-		ContentType jsonContentType = Version.VERSION == null ? ContentType.APPLICATION_JSON
-				: ContentType.create("application/vnd.elasticsearch+json",
-						new BasicNameValuePair("compatible-with", String.valueOf(Version.VERSION.major())));
-
-		Consumer<String> setHeaderIfNotPresent = header -> {
-			if (rest5ClientOptionsBuilder.build().headers().stream() //
-					.noneMatch((h) -> h.getKey().equalsIgnoreCase(header))) {
-				// need to add the compatibility header, this is only done automatically when not passing in custom options.
-				// code copied from RestClientTransport as it is not available outside the package
-				rest5ClientOptionsBuilder.addHeader(header, jsonContentType.toString());
-			}
-		};
-
-		setHeaderIfNotPresent.accept("Content-Type");
-		setHeaderIfNotPresent.accept("Accept");
+//		// todo #3117: do we still need the compatibility header?
+//		ContentType jsonContentType = Version.VERSION == null ? ContentType.APPLICATION_JSON
+//				: ContentType.create("application/vnd.elasticsearch+json",
+//						new BasicNameValuePair("compatible-with", String.valueOf(Version.VERSION.major())));
+//
+//		Consumer<String> setHeaderIfNotPresent = header -> {
+//			if (rest5ClientOptionsBuilder.build().headers().stream() //
+//					.noneMatch((h) -> h.getKey().equalsIgnoreCase(header))) {
+//				// need to add the compatibility header, this is only done automatically when not passing in custom options.
+//				// code copied from RestClientTransport as it is not available outside the package
+//				rest5ClientOptionsBuilder.addHeader(header, jsonContentType.toString());
+//			}
+//		};
+//
+//		setHeaderIfNotPresent.accept("Content-Type");
+//		setHeaderIfNotPresent.accept("Accept");
 
 		rest5ClientOptionsBuilder.addHeader(X_SPRING_DATA_ELASTICSEARCH_CLIENT, clientType);
 

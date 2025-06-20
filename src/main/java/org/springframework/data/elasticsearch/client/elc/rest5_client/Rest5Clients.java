@@ -18,7 +18,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import javax.net.ssl.SSLContext;
 
@@ -32,9 +31,10 @@ import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBu
 import org.apache.hc.client5.http.impl.routing.DefaultProxyRoutePlanner;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.http.nio.ssl.BasicClientTlsStrategy;
 import org.apache.hc.core5.util.Timeout;
-import org.apache.http.message.BasicHeader;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
 import org.springframework.data.elasticsearch.support.HttpHeaders;
@@ -42,7 +42,7 @@ import org.springframework.data.elasticsearch.support.VersionInfo;
 import org.springframework.util.Assert;
 
 /**
- * Utility class containing the functions to create the Elastcisearch Rest5Client used from Elasticsearch 9 on.
+ * Utility class containing the functions to create the Elasticsearch Rest5Client used from Elasticsearch 9 on.
  *
  * @since 6.0
  */
@@ -55,11 +55,13 @@ public final class Rest5Clients {
 	public static final int DEFAULT_MAX_CONN_PER_ROUTE = 10;
 	public static final int DEFAULT_MAX_CONN_TOTAL = 30;
 
+	private Rest5Clients() {}
+
 	/**
-	 * Creates a low level {@link RestClient} for the given configuration.
+	 * Creates a low level {@link Rest5Client} for the given configuration.
 	 *
 	 * @param clientConfiguration must not be {@literal null}
-	 * @return the {@link RestClient}
+	 * @return the {@link Rest5Client}
 	 */
 	public static Rest5Client getRest5Client(ClientConfiguration clientConfiguration) {
 		return getRest5ClientBuilder(clientConfiguration).build();
@@ -67,10 +69,7 @@ public final class Rest5Clients {
 
 	private static Rest5ClientBuilder getRest5ClientBuilder(ClientConfiguration clientConfiguration) {
 
-		HttpHost[] httpHosts = formattedHosts(clientConfiguration.getEndpoints(), clientConfiguration.useSsl()).stream()
-				.map(URI::create)
-				.map(HttpHost::create)
-				.toArray(HttpHost[]::new);
+		HttpHost[] httpHosts = getHttpHosts(clientConfiguration);
 		Rest5ClientBuilder builder = Rest5Client.builder(httpHosts);
 
 		if (clientConfiguration.getPathPrefix() != null) {
@@ -115,20 +114,25 @@ public final class Rest5Clients {
 		return builder;
 	}
 
-	private static List<String> formattedHosts(List<InetSocketAddress> hosts, boolean useSsl) {
+	private static HttpHost @NonNull [] getHttpHosts(ClientConfiguration clientConfiguration) {
+		List<InetSocketAddress> hosts = clientConfiguration.getEndpoints();
+		boolean useSsl = clientConfiguration.useSsl();
 		return hosts.stream()
 				.map(it -> (useSsl ? "https" : "http") + "://" + it.getHostString() + ':' + it.getPort())
-				.collect(Collectors.toList());
+				.map(URI::create)
+				.map(HttpHost::create)
+				.toArray(HttpHost[]::new);
 	}
 
 	private static Header[] toHeaderArray(HttpHeaders headers) {
 		return headers.entrySet().stream() //
 				.flatMap(entry -> entry.getValue().stream() //
 						.map(value -> new BasicHeader(entry.getKey(), value))) //
-				.toArray(Header[]::new);
+				.toList().toArray(new Header[0]);
 	}
 
-	// the basic logic to create the http client is copied from the Rest5ClientBuilder class
+	// the basic logic to create the http client is copied from the Rest5ClientBuilder class, this is taken from the
+	// Elasticsearch code, as there is no public usable instance in that
 	private static CloseableHttpAsyncClient createHttpClient(ClientConfiguration clientConfiguration) {
 
 		var requestConfigBuilder = RequestConfig.custom();
@@ -187,17 +191,26 @@ public final class Rest5Clients {
 				}
 			});
 
+			// we add our headers first so that they might not be overwirtten with default values.
+			httpClientBuilder.addRequestInterceptorFirst((request, entity, context) -> {
+				clientConfiguration.getHeadersSupplier().get().forEach((header, values) -> {
+					// The accept and content-type headersd are already put on the request, despite this being the first interceptor.
+					if("Accept".equalsIgnoreCase(header) || " Content-Type".equalsIgnoreCase(header)) {
+						request.removeHeaders(header);
+					}
+					values.forEach(value -> request.addHeader(header, value));
+				});
+			});
+
 			return httpClientBuilder.build();
 		} catch (NoSuchAlgorithmException e) {
 			throw new IllegalStateException("could not create the default ssl context", e);
 		}
 	}
 
-	@Override
-	public String toString() {
-		return super.toString();
-	}
-
+	/*
+	 * Copied from the Elasticsearch code as this class is not public there.
+	 */
 	private static class RestClientThreadFactory implements ThreadFactory {
 		private static final AtomicLong CLIENT_THREAD_POOL_ID_GENERATOR = new AtomicLong();
 		private final long clientThreadPoolId;

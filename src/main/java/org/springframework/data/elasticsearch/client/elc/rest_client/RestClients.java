@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -21,6 +20,7 @@ import org.apache.http.protocol.HttpContext;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchClients;
@@ -31,7 +31,7 @@ import org.springframework.util.Assert;
  * Utility class containing the functions to create the Elasticsearch RestClient used up to Elasticsearch 9.
  *
  * @since 6.0
- * @deprecated since 6.0
+ * @deprecated since 6.0, use the new Rest5Client the code for that is in the package ../rest_client.
  */
 @Deprecated(since = "6.0", forRemoval = true)
 public final class RestClients {
@@ -47,8 +47,7 @@ public final class RestClients {
 	}
 
 	private static RestClientBuilder getRestClientBuilder(ClientConfiguration clientConfiguration) {
-		HttpHost[] httpHosts = formattedHosts(clientConfiguration.getEndpoints(), clientConfiguration.useSsl()).stream()
-				.map(HttpHost::create).toArray(HttpHost[]::new);
+		HttpHost[] httpHosts = getHttpHosts(clientConfiguration);
 		RestClientBuilder builder = RestClient.builder(httpHosts);
 
 		if (clientConfiguration.getPathPrefix() != null) {
@@ -107,9 +106,12 @@ public final class RestClients {
 		return builder;
 	}
 
-	private static List<String> formattedHosts(List<InetSocketAddress> hosts, boolean useSsl) {
-		return hosts.stream().map(it -> (useSsl ? "https" : "http") + "://" + it.getHostString() + ':' + it.getPort())
-				.collect(Collectors.toList());
+	private static HttpHost @NonNull [] getHttpHosts(ClientConfiguration clientConfiguration) {
+		List<InetSocketAddress> hosts = clientConfiguration.getEndpoints();
+		boolean useSsl = clientConfiguration.useSsl();
+		return hosts.stream()
+				.map(it -> (useSsl ? "https" : "http") + "://" + it.getHostString() + ':' + it.getPort())
+				.map(HttpHost::create).toArray(HttpHost[]::new);
 	}
 
 	private static org.apache.http.Header[] toHeaderArray(HttpHeaders headers) {

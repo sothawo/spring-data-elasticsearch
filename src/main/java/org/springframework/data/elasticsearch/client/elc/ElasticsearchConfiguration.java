@@ -20,9 +20,9 @@ import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.TransportOptions;
+import co.elastic.clients.transport.rest5_client.Rest5ClientOptions;
 import co.elastic.clients.transport.rest5_client.low_level.RequestOptions;
 import co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
-import co.elastic.clients.transport.rest5_client.Rest5ClientOptions;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
@@ -39,7 +39,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 /**
  * Base class for a @{@link org.springframework.context.annotation.Configuration} class to set up the Elasticsearch
  * connection using the Elasticsearch Client. This class exposes different parts of the setup as Spring beans. Deriving
- * classes must provide the {@link ClientConfiguration} to use.
+ * classes must provide the {@link ClientConfiguration} to use. From Version 6.0 on, this class uses the new Rest5Client
+ * from Elasticsearch 9. The old implementation using the RestClient is still available under the name
+ * {@link ElasticsearchLegacyRestClientConfiguration}.
  *
  * @author Peter-Josef Meisch
  * @since 4.4
@@ -53,7 +55,6 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 	 */
 	@Bean(name = "elasticsearchClientConfiguration")
 	public abstract ClientConfiguration clientConfiguration();
-
 
 	/**
 	 * Provides the underlying low level Elasticsearch RestClient.
@@ -70,7 +71,7 @@ public abstract class ElasticsearchConfiguration extends ElasticsearchConfigurat
 	}
 
 	/**
-	 * Provides the Elasticsearch transport to be used. The default implementation uses the {@link RestClient} bean and
+	 * Provides the Elasticsearch transport to be used. The default implementation uses the {@link Rest5Client} bean and
 	 * the {@link JsonpMapper} bean provided in this class.
 	 *
 	 * @return the {@link ElasticsearchTransport}
