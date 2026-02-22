@@ -16,6 +16,10 @@
 package org.springframework.data.elasticsearch.core.query;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.fail;
 import static org.springframework.data.elasticsearch.annotations.FieldType.*;
 import static org.springframework.data.elasticsearch.utils.IdGenerator.*;
 import static org.springframework.data.elasticsearch.utils.IndexBuilder.*;
@@ -25,6 +29,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +37,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
@@ -707,6 +714,33 @@ public abstract class CriteriaQueryIntegrationTests {
 		assertThat(sampleEntity1).isNotNull();
 	}
 
+	@Test // #3247
+	@DisplayName("should apply negation in nested query")
+	void shouldApplyNegationInNestedQuery() {
+
+		var indexOperations = operations.indexOps(Product.class);
+		indexOperations.createWithMapping();
+
+		operations.save(new Product("product-1", "Widget", "ACTIVE"));
+		operations.save(new Product("product-2", "Gadget", "INACTIVE"));
+		operations.save(new Product("product-3", "Gizmo", null));
+
+		Criteria criteria = new Criteria("status").is("ACTIVE")
+				.or(new Criteria("status").exists().not());
+		CriteriaQuery query = new CriteriaQuery(criteria);
+
+		SearchHits<Product> hits = operations.search(query, Product.class);
+
+		List<String> ids = hits.getSearchHits().stream()
+				.map(h -> h.getContent().getId())
+				.toList();
+
+		assertThat(ids)
+				.as("Criteria .is('ACTIVE').or(.exists().not()) should return product-1 and product-3")
+				.containsExactlyInAnyOrder("product-1", "product-3");
+
+	}
+
 	@Document(indexName = "#{@indexNameProvider.indexName()}")
 	static class SampleEntity {
 		@Nullable
@@ -767,6 +801,52 @@ public abstract class CriteriaQueryIntegrationTests {
 
 		public void setVersion(java.lang.@Nullable Long version) {
 			this.version = version;
+		}
+	}
+
+	@Document(indexName = "#{@indexNameProvider.indexName()}-product")
+	static class Product {
+
+		@Id
+		private String id;
+
+		@Field(type = FieldType.Keyword)
+		private String name;
+
+		@Field(type = FieldType.Keyword)
+		private String status;
+
+		public Product() {
+		}
+
+		public Product(String id, String name, String status) {
+			this.id = id;
+			this.name = name;
+			this.status = status;
+		}
+
+		public String getId() {
+			return id;
+		}
+
+		public void setId(String id) {
+			this.id = id;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public String getStatus() {
+			return status;
+		}
+
+		public void setStatus(String status) {
+			this.status = status;
 		}
 	}
 }

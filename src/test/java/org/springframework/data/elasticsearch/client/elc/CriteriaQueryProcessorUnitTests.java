@@ -483,74 +483,113 @@ class CriteriaQueryProcessorUnitTests {
 		assertEquals(expected, queryString, false);
 	}
 
-    @Test
-    void shouldWrapOrCriteria() throws JSONException {
-        // Given
-        String expected = """
-                 {
-                    "bool": {
-                       "should": [
-                          {
-                             "query_string": {
-                                "analyze_wildcard": true,
-                                "fields": [
-                                   "field1"
-                                ],
-                                "query": "*xyz*"
-                             }
-                          },
-                          {
-                             "bool": {
-                                "must_not": [
-                                   {
-                                      "query_string": {
-                                         "boost": 1.5,
-                                         "default_operator": "and",
-                                         "fields": [
-                                            "field1"
-                                         ],
-                                         "query": "abc"
-                                      }
-                                   }
-                                ]
-                             }
-                          },
-                          {
-                             "bool": {
-                                "must": [
-                                   {
-                                      "query_string": {
-                                         "analyze_wildcard": true,
-                                         "fields": [
-                                            "field2"
-                                         ],
-                                         "query": "elastic*"
-                                      }
-                                   }
-                                ]
-                             }
+	@Test
+	void shouldWrapOrCriteria() throws JSONException {
+		// Given
+		String expected = """
+				 {
+				    "bool": {
+				       "should": [
+				          {
+				             "query_string": {
+				                "analyze_wildcard": true,
+				                "fields": [
+				                   "field1"
+				                ],
+				                "query": "*xyz*"
+				             }
+				          },
+				          {
+				             "bool": {
+				                "must_not": [
+				                   {
+				                      "query_string": {
+				                         "boost": 1.5,
+				                         "default_operator": "and",
+				                         "fields": [
+				                            "field1"
+				                         ],
+				                         "query": "abc"
+				                      }
+				                   }
+				                ]
+				             }
+				          },
+				          {
+				             "bool": {
+				                "must": [
+				                   {
+				                      "query_string": {
+				                         "analyze_wildcard": true,
+				                         "fields": [
+				                            "field2"
+				                         ],
+				                         "query": "elastic*"
+				                      }
+				                   }
+				                ]
+				             }
+				          }
+				       ]
+				    }
+				 }
+				""";
+
+		Criteria criteria = Criteria.where("field1")
+				.contains("xyz")
+				.or(
+						Criteria.where("field1")
+								.is("abc").not()
+								.boost(1.5f)
+								.subCriteria(
+										Criteria.where("field2")
+												.startsWith("elastic")));
+
+		// Then
+		String queryString = queryToJson(CriteriaQueryProcessor.createQuery(criteria), mapper);
+
+		assertEquals(expected, queryString, false);
+	}
+
+	@Test // #3247
+	@DisplayName("should apply negation in nested query")
+	void shouldApplyNegationInNestedQuery() throws JSONException {
+
+		String expected = """
+                {
+                  "bool": {
+                    "should": [
+                      {
+                        "term": {
+                          "status": {
+                            "value": "ACTIVE"
                           }
-                       ]
-                    }
-                 }
+                        }
+                      },
+                      {
+                        "bool": {
+                          "must_not": [
+                            {
+                              "exists": {
+                                "field": "status"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
                 """;
+		Criteria criteria = new Criteria("status")
+				.is("ACTIVE")
+				.or(
+						new Criteria("status")
+								.exists()
+								.not());
 
-        Criteria criteria = Criteria.where("field1")
-                .contains("xyz")
-                .or(
-                        Criteria.where("field1")
-                                .is("abc").not()
-                                .boost(1.5f)
-                                .subCriteria(
-                                        Criteria.where("field2")
-                                                .startsWith("elastic")
-                                )
-                );
+		String queryString = queryToJson(CriteriaQueryProcessor.createQuery(criteria), mapper);
 
-        // Then
-        String queryString = queryToJson(CriteriaQueryProcessor.createQuery(criteria), mapper);
-
-        assertEquals(expected, queryString, false);
-    }
-
+		assertEquals(expected, queryString, false);
+	}
 }
